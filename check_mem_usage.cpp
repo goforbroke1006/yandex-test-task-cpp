@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <ctime>
 
 using namespace std;
 
@@ -57,6 +58,7 @@ float getValue() {
 }
 
 int main() {
+    float start_time =  clock()/1000.0;
     unsigned long l = 100000;
     int* r = new int[l];
     for (unsigned long i = 0; i < l; ++i) {
@@ -65,6 +67,12 @@ int main() {
 
     //cout << getValue() << " Mb" << endl;
     cout << std::fixed << setw(11) << setprecision(6) << getValue() << " Mb" << endl;
+
+    float end_time = clock()/1000.0;
+
+    cout << "start time: " << start_time << endl;
+    cout << "end time: " << end_time << endl;
+    cout << "spent time: " << end_time - start_time << endl;
 
     delete(r);
 
