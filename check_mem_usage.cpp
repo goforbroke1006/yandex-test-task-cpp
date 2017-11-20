@@ -8,11 +8,14 @@
 #include "stdlib.h"
 #include "stdio.h"
 #include "string.h"
-#include <iostream>
 #endif
+
+#include <iostream>
+#include <iomanip>
 
 using namespace std;
 
+#define BYTES_TO_MEGABYTES ((float) 1 / 1024 / 1024)
 #define KYLOBYTES_TO_MEGABYTES ((float) 1 / 1024)
 
 int parseLine(char* line) {
@@ -25,11 +28,11 @@ int parseLine(char* line) {
     return i;
 }
 
-int getValue() {
+float getValue() {
 #ifdef _WIN32
     PROCESS_MEMORY_COUNTERS_EX pmc;
-    GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
-    SIZE_T virtualMemUsedByMe = pmc.PrivateUsage;
+    GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PPROCESS_MEMORY_COUNTERS>(&pmc), sizeof(pmc));
+    return (float)(pmc.WorkingSetSize + pmc.PrivateUsage) * BYTES_TO_MEGABYTES;
 #elif __linux__
     FILE* file = fopen("/proc/self/status", "r");
     int result = -1;
@@ -42,18 +45,19 @@ int getValue() {
         }
     }
     fclose(file);
-    return (int)(result * KYLOBYTES_TO_MEGABYTES);
+    return (result * KYLOBYTES_TO_MEGABYTES);
 #endif
 }
 
 int main() {
-    unsigned long l = 100000000;
+    unsigned long l = 100000;
     int* r = new int[l];
-    for (int i = 0; i < l; ++i) {
+    for (unsigned long i = 0; i < l; ++i) {
         r[i] = rand();
     }
 
-    cout << getValue() << " Mb" << endl;
+    //cout << getValue() << " Mb" << endl;
+    cout << std::fixed << setw(11) << setprecision(6) << getValue() << " Mb" << endl;
 
     delete(r);
 
