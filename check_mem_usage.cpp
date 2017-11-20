@@ -1,3 +1,5 @@
+// https://stackoverflow.com/questions/63166/how-to-determine-cpu-and-memory-consumption-from-inside-a-process
+
 #include "stdlib.h"
 #include "stdio.h"
 #include "string.h"
