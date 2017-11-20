@@ -1,6 +1,11 @@
 // https://stackoverflow.com/questions/63166/how-to-determine-cpu-and-memory-consumption-from-inside-a-process
 // http://qaru.site/questions/13923/how-to-determine-cpu-and-memory-consumption-from-inside-a-process
+
+// RUN ON LINUX
 // g++ -std=c++11 -o ./build/check_mem_usage check_mem_usage.cpp && ./build/check_mem_usage
+
+// RUN ON WINDOWS
+// g++ -std=c++11 -o ./build/check_mem_usage.exe check_mem_usage.cpp -lpsapi && "build/check_mem_usage.exe"
 // cl /EHsc /nologo /W4 check_mem_usage.cpp /link /out:./build/check_mem_usage.exe
 
 #ifdef _WIN32
