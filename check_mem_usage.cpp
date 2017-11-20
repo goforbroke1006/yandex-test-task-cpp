@@ -1,10 +1,15 @@
 // https://stackoverflow.com/questions/63166/how-to-determine-cpu-and-memory-consumption-from-inside-a-process
 // g++ -o ./build/check_mem_usage check_mem_usage.cpp && ./build/check_mem_usage
 
+#ifdef _WIN32
+#include "windows.h"
+#include "psapi.h"
+#elif __linux__
 #include "stdlib.h"
 #include "stdio.h"
 #include "string.h"
 #include <iostream>
+#endif
 
 using namespace std;
 
@@ -21,6 +26,11 @@ int parseLine(char* line) {
 }
 
 int getValue() {
+#ifdef _WIN32
+    PROCESS_MEMORY_COUNTERS_EX pmc;
+    GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
+    SIZE_T virtualMemUsedByMe = pmc.PrivateUsage;
+#elif __linux__
     FILE* file = fopen("/proc/self/status", "r");
     int result = -1;
     char line[128];
@@ -33,6 +43,7 @@ int getValue() {
     }
     fclose(file);
     return (int)(result * KYLOBYTES_TO_MEGABYTES);
+#endif
 }
 
 int main() {
@@ -43,6 +54,8 @@ int main() {
     }
 
     cout << getValue() << " Mb" << endl;
+
+    delete(r);
 
     return 0;
 }
