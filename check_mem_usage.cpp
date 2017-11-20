@@ -1,4 +1,5 @@
 // https://stackoverflow.com/questions/63166/how-to-determine-cpu-and-memory-consumption-from-inside-a-process
+// g++ -o ./build/check_mem_usage check_mem_usage.cpp && ./build/check_mem_usage
 
 #include "stdlib.h"
 #include "stdio.h"
