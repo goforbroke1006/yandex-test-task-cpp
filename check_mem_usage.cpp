@@ -58,7 +58,7 @@ float getValue() {
 }
 
 int main() {
-    float start_time =  clock()/1000.0;
+    float start_time =  clock()/CLOCKS_PER_SEC;
     unsigned long l = 100000;
     int* r = new int[l];
     for (unsigned long i = 0; i < l; ++i) {
@@ -68,7 +68,7 @@ int main() {
     //cout << getValue() << " Mb" << endl;
     cout << std::fixed << setw(11) << setprecision(6) << getValue() << " Mb" << endl;
 
-    float end_time = clock()/1000.0;
+    float end_time = clock()/CLOCKS_PER_SEC;
 
     cout << "start time: " << start_time << endl;
     cout << "end time: " << end_time << endl;
