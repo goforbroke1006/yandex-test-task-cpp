@@ -12,14 +12,19 @@
 #include "windows.h"
 #include "psapi.h"
 #elif __linux__
-#include "stdlib.h"
 #include "stdio.h"
-#include "string.h"
 #endif
 
+#include "stdlib.h"
+#include "string.h"
 #include <iostream>
+<<<<<<< HEAD
 #include <iomanip>
 #include <chrono>
+=======
+#include <iomanip>
+#include <ctime>
+>>>>>>> 0382e8df3fc85c006ee5f70ff71f783f597e9031
 
 using namespace std;
 
@@ -36,7 +41,7 @@ int parseLine(char* line) {
     return i;
 }
 
-float getValue() {
+float getRAMUsage() {
 #ifdef _WIN32
     PROCESS_MEMORY_COUNTERS_EX pmc;
     GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PPROCESS_MEMORY_COUNTERS>(&pmc), sizeof(pmc));
@@ -57,13 +62,19 @@ float getValue() {
 #endif
 }
 
+<<<<<<< HEAD
 int main() {
     auto begin_time =  chrono::high_resolution_clock::now();
+=======
+int main() {
+    float start_time =  clock()/1000.0;
+>>>>>>> 0382e8df3fc85c006ee5f70ff71f783f597e9031
     unsigned long l = 100000;
     int* r = new int[l];
     for (unsigned long i = 0; i < l; ++i) {
         r[i] = rand();
     }
+<<<<<<< HEAD
     unsigned long mas[l];
     for (unsigned long k=0; k < l; ++k) {
         mas[k] = rand();
@@ -74,6 +85,17 @@ int main() {
     auto end_time = chrono::high_resolution_clock::now();
 
     cout << "spent time: " << chrono::duration_cast<chrono::milliseconds>(end_time-begin_time).count()<< "ms" << endl;
+=======
+
+    //cout << getRAMUsage() << " Mb" << endl;
+    cout << std::fixed << setw(11) << setprecision(6) << getRAMUsage() << " Mb" << endl;
+
+    float end_time = clock()/1000.0;
+
+    cout << "start time: " << start_time << endl;
+    cout << "end time: " << end_time << endl;
+    cout << "spent time: " << end_time - start_time << endl;
+>>>>>>> 0382e8df3fc85c006ee5f70ff71f783f597e9031
 
     delete(r);
 
