@@ -1,12 +1,9 @@
-// https://stackoverflow.com/questions/63166/how-to-determine-cpu-and-memory-consumption-from-inside-a-process
-// http://qaru.site/questions/13923/how-to-determine-cpu-and-memory-consumption-from-inside-a-process
-
 // RUN ON LINUX
-// g++ -std=c++11 -o ./build/check_mem_usage check_mem_usage.cpp && ./build/check_mem_usage
+// g++ -std=c++11 -o ./build/goforbroke1006_sort goforbroke1006_sort.cpp && ./build/goforbroke1006_sort ~/some-file 32
 
 // RUN ON WINDOWS
-// g++ -std=c++11 -o ./build/check_mem_usage.exe check_mem_usage.cpp -lpsapi && "build/check_mem_usage.exe"
-// cl /EHsc /nologo /W4 check_mem_usage.cpp /link /out:./build/check_mem_usage.exe
+// g++ -std=c++11 -o ./build/goforbroke1006_sort.exe goforbroke1006_sort.cpp -lpsapi && "build/goforbroke1006_sort.exe some-file.txt 32"
+// cl /EHsc /nologo /W4 goforbroke1006_sort.cpp /link /out:./build/goforbroke1006_sort.exe && "build/goforbroke1006_sort.exe some-file.txt 32"
 
 #ifdef _WIN32
 #include "windows.h"
@@ -17,6 +14,7 @@
 #include "string.h"
 #endif
 
+#include <stdlib.h>
 #include <iostream>
 #include <iomanip>
 #include <ctime>
@@ -57,24 +55,25 @@ float getRAMUsage() {
 #endif
 }
 
-int main() {
-    float start_time =  clock()/1000.0;
-    unsigned long l = 100000;
-    int* r = new int[l];
-    for (unsigned long i = 0; i < l; ++i) {
-        r[i] = rand();
-    }
+int main(int argc, char *argv[]) {
+    const char *filename = argv[1];
+    const int RAMLimit = atoi(argv[2]);
 
-    //cout << getRAMUsage() << " Mb" << endl;
-    cout << std::fixed << setw(11) << setprecision(6) << getRAMUsage() << " Mb" << endl;
+    float start_time =  clock()/1000.0;
+
+    while (true) {
+        if (getRAMUsage() >= RAMLimit) return -1;
+
+        cout << "Hello, Wildfowl!!" << endl;
+        //
+        break;
+    }
 
     float end_time = clock()/1000.0;
 
     cout << "start time: " << start_time << endl;
     cout << "end time: " << end_time << endl;
     cout << "spent time: " << end_time - start_time << endl;
-
-    delete(r);
 
     return 0;
 }
