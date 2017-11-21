@@ -1,5 +1,5 @@
 // RUN ON LINUX
-// g++ -std=c++11 -o ./build/goforbroke1006_sort goforbroke1006_sort.cpp && ./build/goforbroke1006_sort ~/some-file 32
+// g++ -std=c++11 -o ./build/goforbroke1006_sort goforbroke1006_sort.cpp && ./build/goforbroke1006_sort /home/goforbroke/MEGA/rand_num_base_128Mb 32
 
 // RUN ON WINDOWS
 // g++ -std=c++11 -o ./build/goforbroke1006_sort.exe goforbroke1006_sort.cpp -lpsapi && "build/goforbroke1006_sort.exe some-file.txt 32"
@@ -9,15 +9,17 @@
 #include "windows.h"
 #include "psapi.h"
 #elif __linux__
-#include "stdlib.h"
 #include "stdio.h"
-#include "string.h"
 #endif
 
+#include "string.h"
 #include <stdlib.h>
 #include <iostream>
 #include <iomanip>
 #include <ctime>
+
+#include <algorithm>
+#include <fstream>
 
 using namespace std;
 
@@ -55,8 +57,76 @@ float getRAMUsage() {
 #endif
 }
 
+int get_file_size(const char *fn) {
+    std::ifstream in(fn, std::ifstream::ate | std::ifstream::binary);
+    return (int) in.tellg();
+}
+
+int fileGetLinesCount(std::string filePath) {
+    std::ifstream *inFile = new ifstream(filePath); 
+    const int r = std::count(std::istreambuf_iterator<char>(*inFile), std::istreambuf_iterator<char>(), '\n');
+    delete(inFile);
+    return r;
+}
+
+void splitToSmallFiles(const char* bigInputFilename, int sizeLimitInMb) {
+    //
+    //const int lc = fileGetLinesCount(bigInputFilename);
+    const unsigned long lc = 12803740;
+    cout << "Main base file, lines count: " << lc << endl;
+
+    int counter = 0;
+    int smallFileIndex = 0;
+
+    char fnm[256] = {};
+    strcat(fnm, bigInputFilename);
+    strcat(fnm, "-%d");
+    cout << "File mask: " << fnm << endl;
+
+    char sfn[256];
+    sprintf(sfn, fnm, smallFileIndex);
+    cout << "Small filename: " << sfn << endl;
+
+//    ifstream* in = new ifstream();
+//    in->open(bigInputFilename,);
+//  std::ifstream in;
+//  in.open (bigInputFilename, std::ifstream::in);
+
+    ifstream in( bigInputFilename );
+
+    cout << "Open base file before splitting > " << bigInputFilename << endl;
+
+    fstream out(sfn);
+
+ofstream out;
+    out.open(sfn, std::ios_base::app);
+
+    cout << "Write part: " << sfn << endl;
+
+    //if (in.is_open()) {
+        for (std::string line; std::getline(in, line); ) {
+cout << (get_file_size(sfn) * BYTES_TO_MEGABYTES) << endl;
+
+            if (get_file_size(sfn) * BYTES_TO_MEGABYTES > 1) { // 0.9f * sizeLimitInMb
+                out.close();
+cout << "Close part: " << sfn << endl;
+
+                smallFileIndex++;
+                sprintf(sfn, fnm, smallFileIndex);
+                out = fstream(sfn);
+
+                cout << "Write part: " << sfn << endl;
+            }
+
+            out << line << endl;
+        }
+    //}
+
+    in.close();
+}
+
 int main(int argc, char *argv[]) {
-    const char *filename = argv[1];
+    const char* filename = argv[1];
     const int RAMLimit = atoi(argv[2]);
 
     float start_time =  clock()/1000.0;
@@ -64,7 +134,8 @@ int main(int argc, char *argv[]) {
     while (true) {
         if (getRAMUsage() >= RAMLimit) return -1;
 
-        cout << "Hello, Wildfowl!!" << endl;
+        //cout << "Hello, Wildfowl!!" << endl;
+        splitToSmallFiles(filename, RAMLimit);
         //
         break;
     }

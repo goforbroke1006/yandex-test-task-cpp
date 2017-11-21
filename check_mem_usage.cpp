@@ -12,11 +12,11 @@
 #include "windows.h"
 #include "psapi.h"
 #elif __linux__
-#include "stdlib.h"
 #include "stdio.h"
-#include "string.h"
 #endif
 
+#include "stdlib.h"
+#include "string.h"
 #include <iostream>
 #include <iomanip>
 #include <ctime>
