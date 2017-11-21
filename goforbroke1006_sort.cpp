@@ -70,9 +70,7 @@ int fileGetLinesCount(std::string filePath) {
 }
 
 void splitToSmallFiles(const char* bigInputFilename, int sizeLimitInMb) {
-    //
-    //const int lc = fileGetLinesCount(bigInputFilename);
-    const unsigned long lc = 12803740;
+    const unsigned long lc = fileGetLinesCount(bigInputFilename);
     cout << "Main base file, lines count: " << lc << endl;
 
     int counter = 0;
@@ -81,70 +79,63 @@ void splitToSmallFiles(const char* bigInputFilename, int sizeLimitInMb) {
     char fnm[256] = {};
     strcat(fnm, bigInputFilename);
     strcat(fnm, "-%d");
-    cout << "File mask: " << fnm << endl;
 
     char sfn[256];
     sprintf(sfn, fnm, smallFileIndex);
-    cout << "Small filename: " << sfn << endl;
-
-//    ifstream* in = new ifstream();
-//    in->open(bigInputFilename,);
-//  std::ifstream in;
-//  in.open (bigInputFilename, std::ifstream::in);
 
     ifstream in( bigInputFilename );
-
     cout << "Open base file before splitting > " << bigInputFilename << endl;
 
-    fstream out(sfn);
-
-ofstream out;
+    ofstream out;
     out.open(sfn, std::ios_base::app);
 
-    cout << "Write part: " << sfn << endl;
+    cout << "Write part: " << sfn;
 
-    //if (in.is_open()) {
-        for (std::string line; std::getline(in, line); ) {
-cout << (get_file_size(sfn) * BYTES_TO_MEGABYTES) << endl;
+    for (std::string line; std::getline(in, line); ) {
+        if (get_file_size(sfn) * BYTES_TO_MEGABYTES > sizeLimitInMb) {
+            out.close();
+            cout << " (finished) " << endl;
 
-            if (get_file_size(sfn) * BYTES_TO_MEGABYTES > 1) { // 0.9f * sizeLimitInMb
-                out.close();
-cout << "Close part: " << sfn << endl;
+            smallFileIndex++;
+            sprintf(sfn, fnm, smallFileIndex);
+            out.open(sfn, std::ios_base::app);
 
-                smallFileIndex++;
-                sprintf(sfn, fnm, smallFileIndex);
-                out = fstream(sfn);
-
-                cout << "Write part: " << sfn << endl;
-            }
-
-            out << line << endl;
+            cout << "Write part: " << sfn;
         }
-    //}
+
+        out << line << endl;
+    }
+    out.close();
+    cout << " (finished) " << endl;
 
     in.close();
 }
 
 int main(int argc, char *argv[]) {
+    float start_time = clock() / CLOCKS_PER_SEC;
+
     const char* filename = argv[1];
     const int RAMLimit = atoi(argv[2]);
 
-    float start_time =  clock()/1000.0;
+    const int initialConsumption = (int) getRAMUsage();
+    cout << "Initial RAM usage: " << initialConsumption << " Mb" << endl;
 
-    while (true) {
-        if (getRAMUsage() >= RAMLimit) return -1;
+    int partsSize = RAMLimit - initialConsumption - 1;
+    cout << "Base parts size: " << partsSize << " Mb" << endl;
 
-        //cout << "Hello, Wildfowl!!" << endl;
-        splitToSmallFiles(filename, RAMLimit);
-        //
-        break;
-    }
+    if (getRAMUsage() >= RAMLimit) return -1;
+    splitToSmallFiles(filename, partsSize);
+    if (getRAMUsage() >= RAMLimit) return -1;
 
-    float end_time = clock()/1000.0;
+    // TODO: sort small files
 
-    cout << "start time: " << start_time << endl;
-    cout << "end time: " << end_time << endl;
-    cout << "spent time: " << end_time - start_time << endl;
+    // TODO: check small files for bounds of ranges
+
+    // TODO: merge small files to result file
+
+    float end_time = clock() / CLOCKS_PER_SEC;
+    cout << "Spent time: " << (end_time - start_time) << " seconds" << endl;
+    cout << "Swaps count: " << (0) << endl;
 
     return 0;
 }
