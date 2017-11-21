@@ -19,7 +19,7 @@
 
 #include <iostream>
 #include <iomanip>
-#include <ctime>
+#include <chrono>
 
 using namespace std;
 
@@ -58,21 +58,22 @@ float getValue() {
 }
 
 int main() {
-    float start_time =  clock()/CLOCKS_PER_SEC;
+    auto begin_time =  chrono::high_resolution_clock::now();
     unsigned long l = 100000;
     int* r = new int[l];
     for (unsigned long i = 0; i < l; ++i) {
         r[i] = rand();
     }
-
+    unsigned long mas[l];
+    for (unsigned long k=0; k < l; ++k) {
+        mas[k] = rand();
+    }
     //cout << getValue() << " Mb" << endl;
     cout << std::fixed << setw(11) << setprecision(6) << getValue() << " Mb" << endl;
 
-    float end_time = clock()/CLOCKS_PER_SEC;
+    auto end_time = chrono::high_resolution_clock::now();
 
-    cout << "start time: " << start_time << endl;
-    cout << "end time: " << end_time << endl;
-    cout << "spent time: " << end_time - start_time << endl;
+    cout << "spent time: " << chrono::duration_cast<chrono::milliseconds>(end_time-begin_time).count()<< "ms" << endl;
 
     delete(r);
 
