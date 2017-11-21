@@ -1,3 +1,5 @@
+// g++ -std=c++11 -o build/rand_num_base_generator rand_num_base_generator.cpp && build/rand_num_base_generator ~/rnb-128Mb.txt 128
+
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>
