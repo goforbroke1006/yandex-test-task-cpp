@@ -19,7 +19,8 @@
 #include "string.h"
 #include <iostream>
 #include <iomanip>
-#include <ctime>
+#include <chrono>
+#include <iomanip>
 
 using namespace std;
 
@@ -58,21 +59,20 @@ float getRAMUsage() {
 }
 
 int main() {
-    float start_time =  clock()/1000.0;
+    auto begin_time =  chrono::high_resolution_clock::now();
+
     unsigned long l = 100000;
     int* r = new int[l];
     for (unsigned long i = 0; i < l; ++i) {
         r[i] = rand();
     }
 
-    //cout << getRAMUsage() << " Mb" << endl;
+    //cout << getValue() << " Mb" << endl;
     cout << std::fixed << setw(11) << setprecision(6) << getRAMUsage() << " Mb" << endl;
 
-    float end_time = clock()/1000.0;
+    auto end_time = chrono::high_resolution_clock::now();
 
-    cout << "start time: " << start_time << endl;
-    cout << "end time: " << end_time << endl;
-    cout << "spent time: " << end_time - start_time << endl;
+    cout << "spent time: " << chrono::duration_cast<chrono::milliseconds>(end_time-begin_time).count()<< "ms" << endl;
 
     delete(r);
 
