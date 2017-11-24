@@ -28,14 +28,14 @@
 using namespace std;
 
 #define BYTES_TO_MEGABYTES ((float) 1 / 1024 / 1024)
-#define KYLOBYTES_TO_MEGABYTES ((float) 1 / 1024)
+#define KILOBYTES_TO_MEGABYTES ((float) 1 / 1024)
 
 std::list<std::string> smallFilesNames;
 unsigned long long swapsCount = 0;
 
-void arrayToFile(const char *fn, std::vector<int *> content);
+void arrayToFile(const char *fn, std::vector<int> content);
 
-std::vector<int *> fileToArray(const char *fn);
+std::vector<int> fileToArray(const char *fn);
 
 #ifdef __linux__
 
@@ -67,16 +67,7 @@ float getRAMUsage() {
         }
     }
     fclose(file);
-    return (result * KYLOBYTES_TO_MEGABYTES);
-#endif
-}
-
-char *get_file_full_path(const char *fn) {
-#ifdef _WIN32
-    //    TCHAR full_path[MAX_PATH];
-    //    GetFullPathName(_T("foo.dat"), MAX_PATH, full_path, NULL);
-#elif __linux__
-    return realpath(fn, nullptr);
+    return (result * KILOBYTES_TO_MEGABYTES);
 #endif
 }
 
@@ -138,59 +129,55 @@ void splitToSmallFiles(const char *bigInputFilename, int sizeLimitInMb) {
     in.close();
 }
 
-int *a = nullptr;
-int *b = nullptr;
+int a;
+int b;
 
 void sortSmallFile(const char *fn) {
-    std::vector<int *> content = fileToArray(fn);
-    qsort(&content[0], content.size(), sizeof(int *), [](const void *one, const void *two) {
-        a = (*(int **) one);
-        b = (*(int **) two);
+    std::vector<int> content = fileToArray(fn);
 
-        if (*a == *b)
+    qsort(&content[0], content.size(), sizeof(int), [](const void *one, const void *two) {
+        a = (*(int *) one);
+        b = (*(int *) two);
+
+        if (a == b)
             return 0;
 
         swapsCount++;
 
-//        cout << "Compare " << *a << " and " << *b << endl;
+        cout << "Compare " << a << " and " << b << endl;
 
-        if (*a < *b)
+        if (a < b)
             return -1;
 
         return 1;
     });
-    delete (a);
-    delete (b);
 
     if (remove(fn) != 0)
         cerr << "Error " << fn << " file deleting!" << endl;
 
     arrayToFile(fn, content);
 
-    for (std::vector<int *>::iterator it = content.begin(); it != content.end(); ++it) {
-        delete (*it);
-    }
     content.clear();
 }
 
-std::vector<int *> content;
+std::vector<int> content;
 
-std::vector<int *> fileToArray(const char *fn) {
+std::vector<int> fileToArray(const char *fn) {
     ifstream inFile(fn);
     for (string line; getline(inFile, line);) {
         content.push_back(
-                new int(atoi(line.c_str()))
+                atoi(line.c_str())
         );
     }
     inFile.close();
     return content;
 }
 
-void arrayToFile(const char *fn, std::vector<int *> content) {
+void arrayToFile(const char *fn, std::vector<int> content) {
     ofstream out;
     out.open(fn, ios_base::app);
-    for (std::vector<int *>::iterator it = content.begin(); it != content.end(); ++it) {
-        out << **it << endl;
+    for (auto it = content.begin(); it != content.end(); ++it) {
+        out << *it << endl;
     }
     out.close();
 }
@@ -220,7 +207,7 @@ int main(int argc, char *argv[]) {
     if (getRAMUsage() >= RAMLimit) return -1;
 
     // TODO: sort small files
-    for (std::list<string>::iterator iterator = smallFilesNames.begin(); iterator != smallFilesNames.end(); ++iterator) {
+    for (auto iterator = smallFilesNames.begin(); iterator != smallFilesNames.end(); ++iterator) {
         sortSmallFile((*iterator).c_str());
     }
 
