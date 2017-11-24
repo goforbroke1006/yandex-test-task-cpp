@@ -1,5 +1,7 @@
 # yandex-test-task-cpp
 
+Quest game =)
+
 Need to sort numbers in big text file. Each number in new line.
 File size - 128 Mb. RAM usage for sorter program - 32 Mb.
 
