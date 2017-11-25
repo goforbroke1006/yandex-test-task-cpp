@@ -219,10 +219,12 @@ int main(int argc, char *argv[]) {
 
     for (auto it = partsNames.begin(); it != partsNames.end(); ++it) {
         sortSmallFile((*it).c_str());
+        checkRAMUsage();
     }
 
     for (auto it = partsNames.begin(); it != partsNames.end(); ++it) {
         partsStreams.push_back(new ifstream((*it).c_str()));
+        checkRAMUsage();
     }
 
     char resFn[256] = {};
@@ -255,12 +257,14 @@ int main(int argc, char *argv[]) {
 
             }
         };
+        checkRAMUsage();
 
         int minIndex = 0;
         for (unsigned i = 1; i < sortBuffer.size(); i++) {
             comparisonsCount++;
             if (sortBuffer[i] < sortBuffer[minIndex]) minIndex = i;
         }
+        checkRAMUsage();
 
         result << sortBuffer[minIndex] << endl;
         sortBuffer[minIndex] = 0;
@@ -273,12 +277,14 @@ int main(int argc, char *argv[]) {
         delete partsStreams.back();
         partsStreams.pop_back();
     }
+    checkRAMUsage();
 
     while (!partsNames.empty()) {
         if (remove(partsNames.back().c_str()) != 0)
             cerr << "Error " << partsNames.back() << " file deleting!" << endl;
         partsNames.pop_back();
     }
+    checkRAMUsage();
 
     float end_time = clock() / CLOCKS_PER_SEC;
 
