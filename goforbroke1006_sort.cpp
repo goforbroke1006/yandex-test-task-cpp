@@ -30,12 +30,15 @@ using namespace std;
 #define BYTES_TO_MEGABYTES ((float) 1 / 1024 / 1024)
 #define KILOBYTES_TO_MEGABYTES ((float) 1 / 1024)
 
-std::list<std::string> smallFilesNames;
+std::vector<std::string> partsNames;
+std::vector<std::ifstream*> partsStreams;
+
 unsigned long long swapsCount = 0;
+unsigned long long comparisonsCount = 0;
 
-void arrayToFile(const char *fn, std::vector<int> content);
+void fileToArray(const char *fn);
 
-std::vector<int> fileToArray(const char *fn);
+void arrayToFile(const char *fn);
 
 #ifdef __linux__
 
@@ -71,6 +74,17 @@ float getRAMUsage() {
 #endif
 }
 
+int RAMLimit;
+
+void checkRAMUsage() {
+    float usage = getRAMUsage();
+    if (usage > RAMLimit) {
+        std::cerr << "ERROR: out of memory limit - " << usage << " Mb, "
+                  << "limit - " << RAMLimit << " Mb" << endl;
+        std::terminate();
+    }
+}
+
 const int get_file_size(const char *fn) {
     std::ifstream in(fn, std::ifstream::ate | std::ifstream::binary);
     return (int) in.tellg();
@@ -104,7 +118,7 @@ void splitToSmallFiles(const char *bigInputFilename, int sizeLimitInMb) {
     out.open(sfn, std::ios_base::app);
 
     cout << "Write part: " << sfn;
-    smallFilesNames.emplace_back(sfn);
+    partsNames.emplace_back(sfn);
 
     for (std::string line; std::getline(in, line);) {
         if (get_file_size(sfn) * BYTES_TO_MEGABYTES > sizeLimitInMb) {
@@ -118,7 +132,7 @@ void splitToSmallFiles(const char *bigInputFilename, int sizeLimitInMb) {
 
             cout << "Write part: " << sfn;
 
-            smallFilesNames.emplace_back(sfn);
+            partsNames.emplace_back(sfn);
         }
 
         out << line << endl;
@@ -129,40 +143,42 @@ void splitToSmallFiles(const char *bigInputFilename, int sizeLimitInMb) {
     in.close();
 }
 
+std::vector<int> content;
 int a;
 int b;
 
 void sortSmallFile(const char *fn) {
-    std::vector<int> content = fileToArray(fn);
+    content.clear();
+    fileToArray(fn);
+
+    cout << "Start sort: " << fn << endl;
 
     qsort(&content[0], content.size(), sizeof(int), [](const void *one, const void *two) {
         a = (*(int *) one);
         b = (*(int *) two);
+
+        comparisonsCount++;
 
         if (a == b)
             return 0;
 
         swapsCount++;
 
-        cout << "Compare " << a << " and " << b << endl;
-
-        if (a < b)
-            return -1;
-
+        if (a < b) return -1;
         return 1;
     });
+
+    checkRAMUsage();
 
     if (remove(fn) != 0)
         cerr << "Error " << fn << " file deleting!" << endl;
 
-    arrayToFile(fn, content);
+    arrayToFile(fn);
 
     content.clear();
 }
 
-std::vector<int> content;
-
-std::vector<int> fileToArray(const char *fn) {
+void fileToArray(const char *fn) {
     ifstream inFile(fn);
     for (string line; getline(inFile, line);) {
         content.push_back(
@@ -170,56 +186,105 @@ std::vector<int> fileToArray(const char *fn) {
         );
     }
     inFile.close();
-    return content;
+    checkRAMUsage();
 }
 
-void arrayToFile(const char *fn, std::vector<int> content) {
+void arrayToFile(const char *fn) {
     ofstream out;
     out.open(fn, ios_base::app);
     for (auto it = content.begin(); it != content.end(); ++it) {
         out << *it << endl;
     }
     out.close();
-}
-
-void removePartFiles() {
-    while (!smallFilesNames.empty()) {
-        if (remove(smallFilesNames.back().c_str()) != 0)
-            cerr << "Error " << smallFilesNames.back() << " file deleting!" << endl;
-        smallFilesNames.pop_back();
-    }
+    checkRAMUsage();
 }
 
 int main(int argc, char *argv[]) {
     float start_time = clock() / CLOCKS_PER_SEC;
 
     const char *filename = argv[1];
-    const int RAMLimit = atoi(argv[2]);
+    RAMLimit = atoi(argv[2]);
 
     const auto initialConsumption = (int) getRAMUsage();
     cout << "Initial RAM usage: " << initialConsumption << " Mb" << endl;
 
-    int partsSize = RAMLimit - initialConsumption - 1;
+    int partsSize = (RAMLimit - initialConsumption) / 2;
+    if (partsSize <= 0) {
+        std::cerr << "ERROR: unacceptable parts limit - " << partsSize << " Mb";
+        std::terminate();
+    }
     cout << "Base parts size: " << partsSize << " Mb" << endl;
 
-    if (getRAMUsage() >= RAMLimit) return -1;
     splitToSmallFiles(filename, partsSize);
-    if (getRAMUsage() >= RAMLimit) return -1;
 
-    // TODO: sort small files
-    for (auto iterator = smallFilesNames.begin(); iterator != smallFilesNames.end(); ++iterator) {
-        sortSmallFile((*iterator).c_str());
+    for (auto it = partsNames.begin(); it != partsNames.end(); ++it) {
+        sortSmallFile((*it).c_str());
     }
 
-    // TODO: check small files for bounds of ranges
+    for (auto it = partsNames.begin(); it != partsNames.end(); ++it) {
+        partsStreams.push_back(new ifstream((*it).c_str()));
+    }
 
-    // TODO: merge small files to result file
+    char resFn[256] = {};
+    strcat(resFn, filename);
+    strcat(resFn, "-result");
+    ofstream result;
+    result.open(resFn);
 
-    //removePartFiles();
+    std::vector<int> sortBuffer(partsNames.size());
+
+    string line;
+    int finishedFilesCounter = 0;
+    while (partsNames.size() > finishedFilesCounter) {
+
+        // re-fill buffer
+        for (unsigned i = 0; i < sortBuffer.size(); i++) {
+            if (sortBuffer[i] == 0) {
+                if (getline(*partsStreams[i], line))
+                    sortBuffer[i] = atoi(line.c_str());
+                else {
+                    if (remove(partsNames[i].c_str()) != 0)
+                        cerr << "Error " << partsNames[i] << " file deleting!" << endl;
+
+                    sortBuffer.erase(sortBuffer.begin() + i);
+                    partsNames.erase(partsNames.begin() + i);
+                    partsStreams.erase(partsStreams.begin() + i);
+
+                    finishedFilesCounter++;
+                }
+
+            }
+        };
+
+        int minIndex = 0;
+        for (unsigned i = 1; i < sortBuffer.size(); i++) {
+            comparisonsCount++;
+            if (sortBuffer[i] < sortBuffer[minIndex]) minIndex = i;
+        }
+
+        result << sortBuffer[minIndex] << endl;
+        sortBuffer[minIndex] = 0;
+    }
+
+    result.close();
+
+    while (!partsStreams.empty()) {
+        partsStreams.back()->close();
+        delete partsStreams.back();
+        partsStreams.pop_back();
+    }
+
+    while (!partsNames.empty()) {
+        if (remove(partsNames.back().c_str()) != 0)
+            cerr << "Error " << partsNames.back() << " file deleting!" << endl;
+        partsNames.pop_back();
+    }
 
     float end_time = clock() / CLOCKS_PER_SEC;
+
     cout << "Spent time: " << (end_time - start_time) << " seconds" << endl;
     cout << "Swaps count: " << swapsCount << endl;
+    cout << "Comparisons count: " << comparisonsCount << endl;
 
     return 0;
 }
