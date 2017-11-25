@@ -31,7 +31,7 @@ using namespace std;
 #define KILOBYTES_TO_MEGABYTES ((float) 1 / 1024)
 
 std::vector<std::string> partsNames;
-std::vector<std::ifstream*> partsStreams;
+std::vector<std::ifstream *> partsStreams;
 
 unsigned long long swapsCount = 0;
 unsigned long long comparisonsCount = 0;
@@ -90,11 +90,39 @@ const int get_file_size(const char *fn) {
     return (int) in.tellg();
 }
 
+void remove_file(const char *filename) {
+    if (remove(filename) != 0)
+        cerr << "Error " << filename << " file deleting!" << endl;
+}
+
 unsigned long fileGetLinesCount(const std::string &filePath) {
     auto *inFile = new ifstream(filePath);
     long r = std::count(std::istreambuf_iterator<char>(*inFile), std::istreambuf_iterator<char>(), '\n');
     delete (inFile);
     return static_cast<unsigned long>(r);
+}
+
+std::vector<int> content;
+int a;
+int b;
+
+void fileToArray(const char *fn) {
+    ifstream inFile(fn);
+    for (string line; getline(inFile, line);) {
+        content.push_back(atoi(line.c_str()));
+    }
+    inFile.close();
+    checkRAMUsage();
+}
+
+void arrayToFile(const char *fn) {
+    ofstream out;
+    out.open(fn, ios_base::app);
+    for (auto it = content.begin(); it != content.end(); ++it) {
+        out << *it << endl;
+    }
+    out.close();
+    checkRAMUsage();
 }
 
 void splitToSmallFiles(const char *bigInputFilename, int sizeLimitInMb) {
@@ -113,7 +141,7 @@ void splitToSmallFiles(const char *bigInputFilename, int sizeLimitInMb) {
     ifstream in(bigInputFilename);
     cout << "Open base file before splitting > " << bigInputFilename << endl;
 
-    remove(sfn);
+    remove_file(sfn);
     ofstream out;
     out.open(sfn, std::ios_base::app);
 
@@ -127,7 +155,7 @@ void splitToSmallFiles(const char *bigInputFilename, int sizeLimitInMb) {
 
             smallFileIndex++;
             sprintf(sfn, fnm, smallFileIndex);
-            remove(sfn);
+            remove_file(sfn);
             out.open(sfn, std::ios_base::app);
 
             cout << "Write part: " << sfn;
@@ -143,10 +171,6 @@ void splitToSmallFiles(const char *bigInputFilename, int sizeLimitInMb) {
     in.close();
 }
 
-std::vector<int> content;
-int a;
-int b;
-
 void sortSmallFile(const char *fn) {
     content.clear();
     fileToArray(fn);
@@ -159,8 +183,7 @@ void sortSmallFile(const char *fn) {
 
         comparisonsCount++;
 
-        if (a == b)
-            return 0;
+        if (a == b) return 0;
 
         swapsCount++;
 
@@ -170,33 +193,11 @@ void sortSmallFile(const char *fn) {
 
     checkRAMUsage();
 
-    if (remove(fn) != 0)
-        cerr << "Error " << fn << " file deleting!" << endl;
+    remove_file(fn);
 
     arrayToFile(fn);
 
     content.clear();
-}
-
-void fileToArray(const char *fn) {
-    ifstream inFile(fn);
-    for (string line; getline(inFile, line);) {
-        content.push_back(
-                atoi(line.c_str())
-        );
-    }
-    inFile.close();
-    checkRAMUsage();
-}
-
-void arrayToFile(const char *fn) {
-    ofstream out;
-    out.open(fn, ios_base::app);
-    for (auto it = content.begin(); it != content.end(); ++it) {
-        out << *it << endl;
-    }
-    out.close();
-    checkRAMUsage();
 }
 
 int main(int argc, char *argv[]) {
@@ -245,8 +246,7 @@ int main(int argc, char *argv[]) {
                 if (getline(*partsStreams[i], line))
                     sortBuffer[i] = atoi(line.c_str());
                 else {
-                    if (remove(partsNames[i].c_str()) != 0)
-                        cerr << "Error " << partsNames[i] << " file deleting!" << endl;
+                    remove_file(partsNames[i].c_str());
 
                     sortBuffer.erase(sortBuffer.begin() + i);
                     partsNames.erase(partsNames.begin() + i);
@@ -254,7 +254,6 @@ int main(int argc, char *argv[]) {
 
                     finishedFilesCounter++;
                 }
-
             }
         };
         checkRAMUsage();
@@ -280,8 +279,7 @@ int main(int argc, char *argv[]) {
     checkRAMUsage();
 
     while (!partsNames.empty()) {
-        if (remove(partsNames.back().c_str()) != 0)
-            cerr << "Error " << partsNames.back() << " file deleting!" << endl;
+        remove_file(partsNames.back().c_str());
         partsNames.pop_back();
     }
     checkRAMUsage();
