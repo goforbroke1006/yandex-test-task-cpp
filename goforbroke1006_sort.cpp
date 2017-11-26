@@ -90,8 +90,20 @@ const int get_file_size(const char *fn) {
     return (int) in.tellg();
 }
 
-void remove_file(const char *filename) {
-    if (remove(filename) != 0)
+void unlink_file(const char *filename) {
+    ifstream ifs(filename);
+    if (!ifs.good()) return;
+
+    int r;
+#ifdef _WIN32
+    r = _unlink(filename)
+#elif __linux__
+    char cmd[256] = {};
+    strcat(cmd, "rm -r ");
+    strcat(cmd, filename);
+    r = system(cmd);
+#endif
+    if (r != 0)
         cerr << "Error " << filename << " file deleting!" << endl;
 }
 
@@ -141,7 +153,7 @@ void splitToSmallFiles(const char *bigInputFilename, int sizeLimitInMb) {
     ifstream in(bigInputFilename);
     cout << "Open base file before splitting > " << bigInputFilename << endl;
 
-    remove_file(sfn);
+    unlink_file(sfn);
     ofstream out;
     out.open(sfn, std::ios_base::app);
 
@@ -155,7 +167,7 @@ void splitToSmallFiles(const char *bigInputFilename, int sizeLimitInMb) {
 
             smallFileIndex++;
             sprintf(sfn, fnm, smallFileIndex);
-            remove_file(sfn);
+            unlink_file(sfn);
             out.open(sfn, std::ios_base::app);
 
             cout << "Write part: " << sfn;
@@ -193,7 +205,7 @@ void sortSmallFile(const char *fn) {
 
     checkRAMUsage();
 
-    remove_file(fn);
+    unlink_file(fn);
 
     arrayToFile(fn);
 
@@ -209,7 +221,7 @@ int main(int argc, char *argv[]) {
     const auto initialConsumption = (int) getRAMUsage();
     cout << "Initial RAM usage: " << initialConsumption << " Mb" << endl;
 
-    int partsSize = (RAMLimit - initialConsumption) / 2;
+    int partsSize = (RAMLimit - initialConsumption) * 0.75d;
     if (partsSize <= 0) {
         std::cerr << "ERROR: unacceptable parts limit - " << partsSize << " Mb";
         std::terminate();
@@ -246,7 +258,7 @@ int main(int argc, char *argv[]) {
                 if (getline(*partsStreams[i], line))
                     sortBuffer[i] = atoi(line.c_str());
                 else {
-                    remove_file(partsNames[i].c_str());
+                    unlink_file(partsNames[i].c_str());
 
                     sortBuffer.erase(sortBuffer.begin() + i);
                     partsNames.erase(partsNames.begin() + i);
@@ -279,7 +291,7 @@ int main(int argc, char *argv[]) {
     checkRAMUsage();
 
     while (!partsNames.empty()) {
-        remove_file(partsNames.back().c_str());
+        unlink_file(partsNames.back().c_str());
         partsNames.pop_back();
     }
     checkRAMUsage();
