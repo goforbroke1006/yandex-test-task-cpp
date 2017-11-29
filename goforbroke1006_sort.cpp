@@ -237,7 +237,7 @@ int processInPercents = 0;
 char progressBar[50];
 
 void displayMergeProcess() {
-    processInPercents = (int) (((float) movedToResult / totalLines) * 100);
+    processInPercents = (int) (((double) movedToResult / totalLines) * 100);
     for (int i = 0; i < 50; i++) {
         progressBar[i] = (i * 2 <= processInPercents) ? '-' : '.';
     }
