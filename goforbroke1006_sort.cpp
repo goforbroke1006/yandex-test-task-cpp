@@ -145,7 +145,7 @@ void fileToArray(const char *fn) {
     }
     inFile.close();
 
-    checkRAMUsage();
+//    checkRAMUsage();
 }
 
 void arrayToFile(const char *fn) {
@@ -156,7 +156,7 @@ void arrayToFile(const char *fn) {
     }
     outFile.close();
 
-    checkRAMUsage();
+//    checkRAMUsage();
 }
 
 void splitToSmallFiles(const char *bigInputFilename, unsigned long sizeLimitInMb) {
@@ -168,26 +168,26 @@ void splitToSmallFiles(const char *bigInputFilename, unsigned long sizeLimitInMb
     sprintf(sfn, fnm, smallFileIndex);
 
     inFile = ifstream(bigInputFilename);
-    cout << "Open base file before splitting > " << bigInputFilename << endl;
+//    cout << "Open base file before splitting > " << bigInputFilename << endl;
 
     unlink_file(sfn);
     outFile = ofstream();
     outFile.open(sfn, std::ios_base::app);
 
-    cout << "Write part: " << sfn;
+//    cout << "Write part: " << sfn;
     partsNames.emplace_back(sfn);
 
     for (; std::getline(inFile, line);) {
         if (get_file_size(sfn) > sizeLimitInMb) {
             outFile.close();
-            cout << " (finished) " << endl;
+//            cout << " (finished) " << endl;
 
             smallFileIndex++;
             sprintf(sfn, fnm, smallFileIndex);
             unlink_file(sfn);
             outFile.open(sfn, std::ios_base::app);
 
-            cout << "Write part: " << sfn;
+//            cout << "Write part: " << sfn;
 
             partsNames.emplace_back(sfn);
         }
@@ -195,18 +195,18 @@ void splitToSmallFiles(const char *bigInputFilename, unsigned long sizeLimitInMb
         outFile << line << endl;
     }
     outFile.close();
-    cout << " (finished) " << endl;
+//    cout << " (finished) " << endl;
 
     inFile.close();
 
-    checkRAMUsage();
+//    checkRAMUsage();
 }
 
 void sortSmallFile(const char *fn) {
     content.clear();
     fileToArray(fn);
 
-    cout << "Start sort: " << fn << endl;
+//    cout << "Start sort: " << fn << endl;
 
     qsort(&content[0], content.size(), sizeof(int), [](const void *one, const void *two) {
         a = (*(int *) one);
@@ -222,7 +222,7 @@ void sortSmallFile(const char *fn) {
         return 1;
     });
 
-    checkRAMUsage();
+//    checkRAMUsage();
 
     unlink_file(fn);
 
@@ -253,25 +253,25 @@ int main(int argc, char *argv[]) {
     totalLines = fileGetLinesCount(filename);
 
     const auto initialConsumption = get_ram_usage();
-    cout << "Initial RAM usage: " << initialConsumption << " bytes" << endl;
+//    cout << "Initial RAM usage: " << initialConsumption << " bytes" << endl;
 
     unsigned long partsSize = (RAMLimit - initialConsumption);
     if (partsSize <= 0) {
         std::cerr << "ERROR: unacceptable parts limit - " << partsSize << " bytes";
         std::terminate();
     }
-    cout << "Base parts size: " << partsSize << " bytes" << endl;
+//    cout << "Base parts size: " << partsSize << " bytes" << endl;
 
     splitToSmallFiles(filename, partsSize);
 
     for (nit = partsNames.begin(); nit != partsNames.end(); ++nit) {
         sortSmallFile((*nit).c_str());
-        checkRAMUsage();
+//        checkRAMUsage();
     }
 
     for (nit = partsNames.begin(); nit != partsNames.end(); ++nit) {
         partsStreams.push_back(new ifstream((*nit).c_str()));
-        checkRAMUsage();
+//        checkRAMUsage();
     }
 
     char resFn[256] = {};
@@ -303,13 +303,13 @@ int main(int argc, char *argv[]) {
                 }
             }
         };
-        checkRAMUsage();
+//        checkRAMUsage();
 
         for (i = 1; i < sortBuffer.size(); i++) {
             comparisonsCount++;
             if (sortBuffer[i] != BUF_NULL && sortBuffer[i] < sortBuffer[minIndex]) minIndex = i;
         }
-        checkRAMUsage();
+//        checkRAMUsage();
 
         if (sortBuffer[minIndex] == BUF_NULL) continue;
 
@@ -329,7 +329,7 @@ int main(int argc, char *argv[]) {
         delete partsStreams.back();
         partsStreams.pop_back();
     }
-    checkRAMUsage();
+//    checkRAMUsage();
 
     while (!partsNames.empty()) {
         unlink_file(partsNames.back().c_str());
