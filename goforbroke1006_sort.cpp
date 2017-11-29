@@ -27,11 +27,8 @@
 
 using namespace std;
 
-#define BYTES_TO_MEGABYTES ((float) 1 / 1024 / 1024)
-#define KILOBYTES_TO_MEGABYTES ((float) 1 / 1024)
-
-std::vector<std::string> partsNames;
-std::vector<std::ifstream *> partsStreams;
+#define KILOBYTES_TO_BYTES (1 * 1024)
+#define MEGABYTES_TO_BYTES (1 * 1024 * 1024)
 
 unsigned long long swapsCount = 0;
 unsigned long long comparisonsCount = 0;
@@ -53,14 +50,18 @@ int parseLine(char *line) {
 
 #endif
 
-float getRAMUsage() {
+/**
+ * Get RAM usage for current process
+ * @return number in bytes
+ */
+unsigned long get_ram_usage() {
 #ifdef _WIN32
     PROCESS_MEMORY_COUNTERS_EX pmc;
     GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PPROCESS_MEMORY_COUNTERS>(&pmc), sizeof(pmc));
-    return (float)(pmc.WorkingSetSize + pmc.PrivateUsage) * BYTES_TO_MEGABYTES;
+    return (float)(pmc.WorkingSetSize + pmc.PrivateUsage);
 #elif __linux__
     FILE *file = fopen("/proc/self/status", "r");
-    int result = -1;
+    int result = 0;
     char line[128];
 
     while (fgets(line, 128, file) != nullptr) {
@@ -70,24 +71,13 @@ float getRAMUsage() {
         }
     }
     fclose(file);
-    return (result * KILOBYTES_TO_MEGABYTES);
+    return (unsigned long) (result * KILOBYTES_TO_BYTES);
 #endif
 }
 
-int RAMLimit;
-
-void checkRAMUsage() {
-    float usage = getRAMUsage();
-    if (usage > RAMLimit) {
-        std::cerr << "ERROR: out of memory limit - " << usage << " Mb, "
-                  << "limit - " << RAMLimit << " Mb" << endl;
-        std::terminate();
-    }
-}
-
-const int get_file_size(const char *fn) {
+const unsigned long get_file_size(const char *fn) {
     std::ifstream in(fn, std::ifstream::ate | std::ifstream::binary);
-    return (int) in.tellg();
+    return (unsigned long) in.tellg();
 }
 
 void unlink_file(const char *filename) {
@@ -96,10 +86,10 @@ void unlink_file(const char *filename) {
 
     int r;
 #ifdef _WIN32
-    r = _unlink(filename)
+    linesCount = _unlink(filename)
 #elif __linux__
     char cmd[256] = {};
-    strcat(cmd, "rm -r ");
+    strcat(cmd, "rm -f ");
     strcat(cmd, filename);
     r = system(cmd);
 #endif
@@ -107,80 +97,107 @@ void unlink_file(const char *filename) {
         cerr << "Error " << filename << " file deleting!" << endl;
 }
 
-unsigned long fileGetLinesCount(const std::string &filePath) {
-    auto *inFile = new ifstream(filePath);
-    long r = std::count(std::istreambuf_iterator<char>(*inFile), std::istreambuf_iterator<char>(), '\n');
-    delete (inFile);
-    return static_cast<unsigned long>(r);
-}
+// ==========
 
+std::vector<std::string> partsNames;
+std::vector<std::string>::iterator nit;
+std::vector<std::ifstream *> partsStreams;
+
+unsigned long RAMLimit;
 std::vector<int> content;
 int a;
 int b;
+float RAMUsage = 0;
+std::ifstream inFile;
+std::ofstream outFile;
+std::vector<int>::iterator it;
+std::string line;
+long linesCount = 0;
+
+int smallFileIndex = 0;
+char fnm[256] = {};
+char sfn[256];
+
+const int BUF_NULL = -1;
+
+void checkRAMUsage() {
+    RAMUsage = get_ram_usage();
+    if (RAMUsage > RAMLimit) {
+        std::cerr << "ERROR: out of memory limit - " << RAMUsage << " Mb, "
+                  << "limit - " << RAMLimit << " Mb" << endl;
+        std::terminate();
+    }
+}
+
+unsigned long fileGetLinesCount(const std::string &filePath) {
+    inFile = ifstream(filePath);
+    linesCount = std::count(std::istreambuf_iterator<char>(inFile), std::istreambuf_iterator<char>(), '\n');
+    inFile.close();
+    return static_cast<unsigned long>(linesCount);
+}
 
 void fileToArray(const char *fn) {
-    ifstream inFile(fn);
-    for (string line; getline(inFile, line);) {
+    inFile = ifstream(fn);
+    for (; getline(inFile, line);) {
         content.push_back(atoi(line.c_str()));
     }
     inFile.close();
+
     checkRAMUsage();
 }
 
 void arrayToFile(const char *fn) {
-    ofstream out;
-    out.open(fn, ios_base::app);
-    for (auto it = content.begin(); it != content.end(); ++it) {
-        out << *it << endl;
+    outFile = ofstream();
+    outFile.open(fn, ios_base::app);
+    for (it = content.begin(); it != content.end(); ++it) {
+        outFile << *it << endl;
     }
-    out.close();
+    outFile.close();
+
     checkRAMUsage();
 }
 
-void splitToSmallFiles(const char *bigInputFilename, int sizeLimitInMb) {
-    const unsigned long lc = fileGetLinesCount(bigInputFilename);
-    cout << "Main base file, lines count: " << lc << endl;
+void splitToSmallFiles(const char *bigInputFilename, unsigned long sizeLimitInMb) {
+    cout << "Main base file, lines count: " << fileGetLinesCount(bigInputFilename) << endl;
 
-    int smallFileIndex = 0;
-
-    char fnm[256] = {};
     strcat(fnm, bigInputFilename);
     strcat(fnm, "-%d");
 
-    char sfn[256];
     sprintf(sfn, fnm, smallFileIndex);
 
-    ifstream in(bigInputFilename);
+    inFile = ifstream(bigInputFilename);
     cout << "Open base file before splitting > " << bigInputFilename << endl;
 
     unlink_file(sfn);
-    ofstream out;
-    out.open(sfn, std::ios_base::app);
+    outFile = ofstream();
+    outFile.open(sfn, std::ios_base::app);
 
     cout << "Write part: " << sfn;
     partsNames.emplace_back(sfn);
 
-    for (std::string line; std::getline(in, line);) {
-        if (get_file_size(sfn) * BYTES_TO_MEGABYTES > sizeLimitInMb) {
-            out.close();
+    for (; std::getline(inFile, line);) {
+        if (get_file_size(sfn) > sizeLimitInMb) {
+            outFile.close();
             cout << " (finished) " << endl;
 
             smallFileIndex++;
             sprintf(sfn, fnm, smallFileIndex);
             unlink_file(sfn);
-            out.open(sfn, std::ios_base::app);
+            outFile.open(sfn, std::ios_base::app);
 
             cout << "Write part: " << sfn;
 
             partsNames.emplace_back(sfn);
         }
 
-        out << line << endl;
+        outFile << line << endl;
     }
-    out.close();
+    outFile.close();
     cout << " (finished) " << endl;
 
-    in.close();
+    inFile.close();
+
+    checkRAMUsage();
 }
 
 void sortSmallFile(const char *fn) {
@@ -216,27 +233,27 @@ int main(int argc, char *argv[]) {
     float start_time = clock() / CLOCKS_PER_SEC;
 
     const char *filename = argv[1];
-    RAMLimit = atoi(argv[2]);
+    RAMLimit = (unsigned long) atoi(argv[2]) * MEGABYTES_TO_BYTES;
 
-    const auto initialConsumption = (int) getRAMUsage();
-    cout << "Initial RAM usage: " << initialConsumption << " Mb" << endl;
+    const auto initialConsumption = get_ram_usage();
+    cout << "Initial RAM usage: " << initialConsumption << " bytes" << endl;
 
-    int partsSize = (RAMLimit - initialConsumption) * 0.75d;
+    unsigned long partsSize = (RAMLimit - initialConsumption); // * 0.75d;
     if (partsSize <= 0) {
-        std::cerr << "ERROR: unacceptable parts limit - " << partsSize << " Mb";
+        std::cerr << "ERROR: unacceptable parts limit - " << partsSize << " bytes";
         std::terminate();
     }
-    cout << "Base parts size: " << partsSize << " Mb" << endl;
+    cout << "Base parts size: " << partsSize << " bytes" << endl;
 
     splitToSmallFiles(filename, partsSize);
 
-    for (auto it = partsNames.begin(); it != partsNames.end(); ++it) {
-        sortSmallFile((*it).c_str());
+    for (nit = partsNames.begin(); nit != partsNames.end(); ++nit) {
+        sortSmallFile((*nit).c_str());
         checkRAMUsage();
     }
 
-    for (auto it = partsNames.begin(); it != partsNames.end(); ++it) {
-        partsStreams.push_back(new ifstream((*it).c_str()));
+    for (nit = partsNames.begin(); nit != partsNames.end(); ++nit) {
+        partsStreams.push_back(new ifstream((*nit).c_str()));
         checkRAMUsage();
     }
 
@@ -249,36 +266,39 @@ int main(int argc, char *argv[]) {
     std::vector<int> sortBuffer(partsNames.size());
 
     string line;
-    int finishedFilesCounter = 0;
-    while (partsNames.size() > finishedFilesCounter) {
+    unsigned i = 0;
+    int minIndex = 0;
+    while (!partsNames.empty()) {
 
         // re-fill buffer
-        for (unsigned i = 0; i < sortBuffer.size(); i++) {
-            if (sortBuffer[i] == 0) {
+        for (i = 0; i < sortBuffer.size(); i++) {
+            if (sortBuffer[i] == BUF_NULL) {
                 if (getline(*partsStreams[i], line))
                     sortBuffer[i] = atoi(line.c_str());
                 else {
+                    cout << "Exhausted part: " << partsNames[i] << " (removing...)" << endl;
+
                     unlink_file(partsNames[i].c_str());
 
                     sortBuffer.erase(sortBuffer.begin() + i);
                     partsNames.erase(partsNames.begin() + i);
                     partsStreams.erase(partsStreams.begin() + i);
-
-                    finishedFilesCounter++;
                 }
             }
         };
         checkRAMUsage();
 
-        int minIndex = 0;
-        for (unsigned i = 1; i < sortBuffer.size(); i++) {
+        for (i = 1; i < sortBuffer.size(); i++) {
             comparisonsCount++;
-            if (sortBuffer[i] < sortBuffer[minIndex]) minIndex = i;
+            if (sortBuffer[i] != BUF_NULL && sortBuffer[i] < sortBuffer[minIndex]) minIndex = i;
         }
         checkRAMUsage();
 
+        if (sortBuffer[minIndex] == BUF_NULL) break;
+
         result << sortBuffer[minIndex] << endl;
-        sortBuffer[minIndex] = 0;
+        sortBuffer[minIndex] = BUF_NULL;
+        minIndex = 0;
     }
 
     result.close();
