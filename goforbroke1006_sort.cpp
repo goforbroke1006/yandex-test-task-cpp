@@ -1,5 +1,7 @@
 // RUN ON LINUX
 // g++ -std=c++11 -o ./build/goforbroke1006_sort goforbroke1006_sort.cpp && ./build/goforbroke1006_sort /home/goforbroke/MEGA/rand_num_base_128Mb 32
+// g++ -std=c++11 -o ./build/goforbroke1006_sort goforbroke1006_sort.cpp && ./build/goforbroke1006_sort /home/goforbroke/rnb-128Mb.txt 32
+// g++ -std=c++11 -o ./build/goforbroke1006_sort goforbroke1006_sort.cpp && ./build/goforbroke1006_sort /home/goforbroke/rnb-12Mb.txt 15
 
 // RUN ON WINDOWS
 // g++ -std=c++11 -o ./build/goforbroke1006_sort.exe goforbroke1006_sort.cpp -lpsapi && "build/goforbroke1006_sort.exe some-file.txt 32"
@@ -158,7 +160,7 @@ void arrayToFile(const char *fn) {
 }
 
 void splitToSmallFiles(const char *bigInputFilename, unsigned long sizeLimitInMb) {
-    cout << "Main base file, lines count: " << fileGetLinesCount(bigInputFilename) << endl;
+//    cout << "Main base file, lines count: " << fileGetLinesCount(bigInputFilename) << endl;
 
     strcat(fnm, bigInputFilename);
     strcat(fnm, "-%d");
@@ -229,16 +231,31 @@ void sortSmallFile(const char *fn) {
     content.clear();
 }
 
+unsigned long totalLines = 0;
+unsigned long movedToResult = 0;
+int processInPercents = 0;
+char progressBar[50];
+
+void displayMergeProcess() {
+    processInPercents = (int) (((float) movedToResult / totalLines) * 100);
+    for (int i = 0; i < 50; i++) {
+        progressBar[i] = (i * 2 <= processInPercents) ? '-' : '.';
+    }
+    cout << "Merging [" << progressBar << "] [" << processInPercents << "%]" << '\r' << flush;
+}
+
 int main(int argc, char *argv[]) {
     float start_time = clock() / CLOCKS_PER_SEC;
 
     const char *filename = argv[1];
     RAMLimit = (unsigned long) atoi(argv[2]) * MEGABYTES_TO_BYTES;
 
+    totalLines = fileGetLinesCount(filename);
+
     const auto initialConsumption = get_ram_usage();
     cout << "Initial RAM usage: " << initialConsumption << " bytes" << endl;
 
-    unsigned long partsSize = (RAMLimit - initialConsumption); // * 0.75d;
+    unsigned long partsSize = (RAMLimit - initialConsumption);
     if (partsSize <= 0) {
         std::cerr << "ERROR: unacceptable parts limit - " << partsSize << " bytes";
         std::terminate();
@@ -276,7 +293,7 @@ int main(int argc, char *argv[]) {
                 if (getline(*partsStreams[i], line))
                     sortBuffer[i] = atoi(line.c_str());
                 else {
-                    cout << "Exhausted part: " << partsNames[i] << " (removing...)" << endl;
+//                    cout << "Exhausted part: " << partsNames[i] << " (removing...)" << endl;
 
                     unlink_file(partsNames[i].c_str());
 
@@ -294,12 +311,16 @@ int main(int argc, char *argv[]) {
         }
         checkRAMUsage();
 
-        if (sortBuffer[minIndex] == BUF_NULL) break;
+        if (sortBuffer[minIndex] == BUF_NULL) continue;
 
         result << sortBuffer[minIndex] << endl;
         sortBuffer[minIndex] = BUF_NULL;
         minIndex = 0;
+        movedToResult++;
+
+        displayMergeProcess();
     }
+    cout << endl;
 
     result.close();
 
