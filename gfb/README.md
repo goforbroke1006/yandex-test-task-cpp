@@ -1,0 +1,1 @@
+g++ -std=c++11 -pthread -o ./build/gfb gfb/main.cpp && ./build/gfb /home/goforbroke/rnb-10Mb.txt 20
