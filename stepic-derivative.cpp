@@ -177,7 +177,10 @@ public:
     }
 
     void sortByDegree() {
-        // todo:
+        m_parts.sort([](const DerivativeMember *first, const DerivativeMember *second) {
+            unsigned int i = 0;
+            return (first->degree > second->degree);
+        });
     }
 
     std::string toString() {
