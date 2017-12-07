@@ -12,16 +12,16 @@ std::vector<std::string> strSplit(std::string str, std::vector<std::string> deli
     std::vector<std::string> r;
 
     size_t pos = 0;
-    std::string delimiter = "";
+    std::string delimiter;
 
     do {
         pos = str.length();
 
-        for (auto it = delimiters.begin(); it != delimiters.end(); it++) {
-            size_t p = str.find(*it);
+        for (auto &it : delimiters) {
+            size_t p = str.find(it);
             if (p < pos && p != std::string::npos) {
                 pos = p;
-                delimiter = *it;
+                delimiter = it;
             }
         }
 
@@ -58,7 +58,7 @@ public:
 //        else return multiply + "*x";
     }
 
-    static DerivativeMember *fromString(std::string str) {
+    static DerivativeMember *fromString(std::string &str) {
         tmp_member = new DerivativeMember();
         tmp_parts = strSplit(str, {"*x^", "*x"});
         tmp_member->multiply = std::atoi(tmp_parts[0].c_str());
@@ -82,6 +82,7 @@ private:
         size_t pos = 0;
         size_t p;
         std::string delimiter;
+        std::string old_delimiter;
 
         std::vector<std::string>::iterator it;
 
@@ -96,34 +97,24 @@ private:
                 }
             }
 
-            r.push_back((delimiter == "-" ? "-" : "") + str.substr(0, pos));
+            r.push_back((old_delimiter == "-" ? "-" : "") + str.substr(0, pos));
             str.erase(0, pos + delimiter.length());
+
+            old_delimiter = delimiter;
         } while (str.length() > 0);
 
         return r;
     }
 
 public:
-    void appendAll(std::string part) {
+    void appendAll(std::string &strParts) {
 
-//        part.erase(remove_if(part.begin(), part.end(), isspace), part.end());
-        std::vector<std::string> parts = DerivativeVector::strSplit(part);
-//        std::vector<std::string> parts;
+        strParts.erase(remove_if(strParts.begin(), strParts.end(), isspace), strParts.end());
+        std::vector<std::string> parts = DerivativeVector::strSplit(strParts);
 
-        for (auto it = parts.begin(); it != parts.end(); it++) {
-            m_parts.push_back(DerivativeMember::fromString(*it));
+        for (auto &part : parts) {
+            m_parts.push_back(DerivativeMember::fromString(part));
         }
-
-        // remove spaces
-        // split by "+"
-        // split by "-"
-        // append
-    }
-
-    void append(std::string part) {
-        m_parts.push_back(
-                DerivativeMember::fromString(part)
-        );
     }
 
     void runDerivative() {
@@ -171,8 +162,8 @@ public:
             tmp_parts.push_back(fixed);
         }
 
-        for (auto it1 = m_parts.begin(); it1 != m_parts.end(); it1++) {
-            delete *it1;
+        for (auto &m_part : m_parts) {
+            delete m_part;
         }
         m_parts.clear();
         m_parts = tmp_parts;
@@ -181,23 +172,23 @@ public:
     std::string toString() {
         std::string r;
         for (auto it = m_parts.begin(); it != m_parts.end(); it++) {
-//            r += ((r.length() > 0 && (*it)->multiply > 0) ? "+" : "") + (*it)->toString();
-            r += (it != m_parts.begin() ? "+" : "") + (*it)->toString();
+            r += ((it != m_parts.begin() && (*it)->multiply > 0) ? "+" : "") + (*it)->toString();
         }
         return r;
     }
 };
 
 std::string derivative(std::string polynomial) {
-    return (std::string) "";
+    auto *v = new DerivativeVector;
+    v->appendAll(polynomial);
+    v->simplify();
+    v->runDerivative();
+    const std::string &res = (std::string) v->toString();
+    delete (v);
+    return res;
 }
 
 int main(int argc, char **argv) {
-    auto *v = new DerivativeVector;
-    v->appendAll("200*x^99 + 200*x^5 + 10*x^10 + 2*x^5");
-    v->simplify();
-    v->runDerivative();
-    std::cout << v->toString();
-    delete (v);
+    std::cout << derivative("200*x^99 - 200*x^5 + 10*x^10 + 2*x^5");
     return 0;
 }
