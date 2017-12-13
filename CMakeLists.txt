@@ -12,3 +12,5 @@ add_executable(rand_num_base_generator rand_num_base_generator.cpp)
 add_executable(goforbroke1006_sort goforbroke1006_sort.cpp)
 
 add_executable(stepic_derivative stepic-derivative.cpp)
+
+add_executable(stepic_smart_ptr stepic-smart-ptr.cpp)
